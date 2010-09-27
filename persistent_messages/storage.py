@@ -37,7 +37,7 @@ class PersistentMessageStorage(FallbackStorage):
         if not get_user(self.request).is_authenticated():
             return super(PersistentMessageStorage, self)._get(*args, **kwargs)
         messages = []
-        for message in Message.objects.filter(user=get_user(self.request)).exclude(read=True).filter(Q(expires=None) | Q(expires__gt=datetime.datetime.now())):
+        for message in Message.objects.filter(user=get_user(self.request)).filter(Q(expires=None) | Q(expires__gt=datetime.datetime.now())):
             if not message.is_persistent():
                 self.non_persistent_messages.append(message)
             messages.append(message)
@@ -120,3 +120,10 @@ class PersistentMessageStorage(FallbackStorage):
         else:
             self.added_new = True
             self._queued_messages.append(message)
+
+    def number_unread(self):
+        """
+        returns number of messages unread by the user
+        """
+        return Message.objects.filter(read=False, user=get_user(self.request)).count()
+
