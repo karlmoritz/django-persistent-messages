@@ -1,11 +1,15 @@
-from persistent_messages.models import Message
-from persistent_messages.constants import PERSISTENT_MESSAGE_LEVELS
+import datetime
+
 from django.contrib import messages 
 from django.contrib.messages.storage.base import BaseStorage
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.db.models import Q
-import datetime
+from django.conf import settings
+
+from persistent_messages.models import Message
+from persistent_messages.constants import PERSISTENT_MESSAGE_LEVELS
+
 
 def get_user(request):
     if hasattr(request, 'user') and request.user.__class__ != AnonymousUser:
@@ -28,10 +32,20 @@ class PersistentMessageStorage(FallbackStorage):
         self.non_persistent_messages = []
         self.is_anonymous = not get_user(self.request).is_authenticated()
 
-    def _message_queryset(self, exclude_unread=True):
+    def _message_queryset(self, exclude_read=None):
+        """
+        gets the messages from the model. If `exclude_unread` is set to True, read messages are excluded
+        """
         qs = Message.objects.filter(user=get_user(self.request)).filter(Q(expires=None) | Q(expires__gt=datetime.datetime.now()))
-        if exclude_unread:
+
+        # If the function didn't get an exclude_read argument, we look for it in settings
+        if exclude_read is None:
+            # By default read messages are not excluded, we show all messages
+            exclude_read = getattr(settings, 'EXCLUDE_READ', False)
+        
+        if exclude_read:
             qs = qs.exclude(read=True)
+        
         return qs
 
     def _get(self, *args, **kwargs):
@@ -51,13 +65,13 @@ class PersistentMessageStorage(FallbackStorage):
         return (messages, True)
 
     def get_persistent(self):
-        return self._message_queryset(exclude_unread=False).filter(level__in=PERSISTENT_MESSAGE_LEVELS)
+        return self._message_queryset(exclude_read=False).filter(level__in=PERSISTENT_MESSAGE_LEVELS)
 
     def get_persistent_unread(self):
-        return self._message_queryset(exclude_unread=True).filter(level__in=PERSISTENT_MESSAGE_LEVELS)
+        return self._message_queryset(exclude_read=True).filter(level__in=PERSISTENT_MESSAGE_LEVELS)
 
     def count_unread(self):
-        return self._message_queryset(exclude_unread=True).count()
+        return self._message_queryset(exclude_read=True).count()
 
     def count_persistent_unread(self):
         return self.get_persistent_unread().count()
@@ -139,10 +153,3 @@ class PersistentMessageStorage(FallbackStorage):
         else:
             self.added_new = True
             self._queued_messages.append(message)
-
-    def number_unread(self):
-        """
-        returns number of messages unread by the user
-        """
-        return Message.objects.filter(read=False, user=get_user(self.request)).count()
-
