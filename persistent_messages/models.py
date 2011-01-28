@@ -35,6 +35,9 @@ class Message(models.Model):
     expires = models.DateTimeField(null=True, blank=True)
     close_timeout = models.IntegerField(null=True, blank=True)
 
+    class Meta:
+        ordering = ['-created']
+
     def is_persistent(self):
         return self.level in PERSISTENT_MESSAGE_LEVELS
     is_persistent.boolean = True
