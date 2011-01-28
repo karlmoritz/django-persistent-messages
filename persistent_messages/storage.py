@@ -150,6 +150,7 @@ class PersistentMessageStorage(FallbackStorage):
         # Hence, save it now instead of adding it to queue:
         if STORE_WHEN_ADDING:
             message.save()
+            return message
         else:
             self.added_new = True
             self._queued_messages.append(message)
