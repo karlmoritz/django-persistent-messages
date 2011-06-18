@@ -24,17 +24,23 @@ close a message when it is displayed for the second time.
 """
 STORE_WHEN_ADDING = True
 
-#@TODO USE FALLBACK 
+#TODO: USE FALLBACK 
 class PersistentMessageStorage(FallbackStorage):
-
     def __init__(self, *args, **kwargs):
+        """
+        Inherited attributes:
+            self.request = request
+            self._queued_messages = []
+            self.used = False
+            self.added_new = False
+        """
         super(PersistentMessageStorage, self).__init__(*args, **kwargs)
         self.non_persistent_messages = []
         self.is_anonymous = not get_user(self.request).is_authenticated()
 
     def _message_queryset(self, exclude_read=None):
         """
-        gets the messages from the model. If `exclude_unread` is set to True, read messages are excluded
+        Gets the messages from the model. If `exclude_unread` is set to True, read messages are excluded
         """
         qs = Message.objects.filter(user=get_user(self.request)).filter(Q(expires=None) | Q(expires__gt=datetime.datetime.now()))
 
@@ -53,10 +59,13 @@ class PersistentMessageStorage(FallbackStorage):
         Retrieves a list of stored messages. Returns a tuple of the messages
         and a flag indicating whether or not all the messages originally
         intended to be stored in this storage were, in fact, stored and
-        retrieved; e.g., ``(messages, all_retrieved)``.
+        retrieved: `(messages, all_retrieved)`
+
+        This is called by BaseStorage._loaded_messages
         """
-        if not get_user(self.request).is_authenticated():
+        if self.is_anonymous:
             return super(PersistentMessageStorage, self)._get(*args, **kwargs)
+
         messages = []
         for message in self._message_queryset():
             if not message.is_persistent():
@@ -65,25 +74,61 @@ class PersistentMessageStorage(FallbackStorage):
         return (messages, True)
 
     def get_persistent(self):
+        """
+        Get read and unread persistent messages
+        """
         return self._message_queryset(exclude_read=False).filter(level__in=PERSISTENT_MESSAGE_LEVELS)
 
     def get_persistent_unread(self):
+        """
+        Get unread persistent messages
+        """
         return self._message_queryset(exclude_read=True).filter(level__in=PERSISTENT_MESSAGE_LEVELS)
 
+    def get_nonpersistent(self):
+        """
+        Gets nonpersistent messages, loads `self.non_persistent_messages` and sets `self.used` to `True`
+        so that the middleware deletes them when calling `update` method
+        """
+        nonpersistent_messages = self._message_queryset(exclude_read=False).exclude(level__in=PERSISTENT_MESSAGE_LEVELS)
+
+        self.non_persistent_messages = [message for message in nonpersistent_messages]
+        self.used = True
+
+        return nonpersistent_messages
+
     def count_unread(self):
+        """
+        Counts persistent and nonpersistent unread messages
+        """
         return self._message_queryset(exclude_read=True).count()
 
     def count_persistent_unread(self):
+        """
+        Counts persistent unread messages
+        """
         return self.get_persistent_unread().count()
         
+    def count_nonpersistent(self):
+        """
+        Counts nonpersistent messages
+        """
+        return self._message_queryset(exclude_read=False).exclude(level__in=PERSISTENT_MESSAGE_LEVELS).count()
+
     def _delete_non_persistent(self):
+        """
+        Deletes nonpersistent messages stored in `self.non_persistent_messages` list.
+        The list contains `Message` objects stored in the DB with a nonpersistent level,
+        thus we need to iterate the list deleting them.
+        """
         for message in self.non_persistent_messages:
             message.delete()
         self.non_persistent_messages = []
 
     def __iter__(self):
-        if not get_user(self.request).is_authenticated():
+        if self.is_anonymous:
             return super(PersistentMessageStorage, self).__iter__()
+
         self.used = True
         messages = []
         messages.extend(self._loaded_messages)
@@ -92,11 +137,11 @@ class PersistentMessageStorage(FallbackStorage):
         return iter(messages)
 
     def _prepare_messages(self, messages):
-        if not get_user(self.request).is_authenticated():
-            return super(PersistentMessageStorage, self)._prepare_messages(messages)
         """
         Obsolete method since model takes care of this.
         """
+        if self.is_anonymous:
+            return super(PersistentMessageStorage, self)._prepare_messages(messages)
         pass
         
     def _store(self, messages, response, *args, **kwargs):
@@ -107,8 +152,9 @@ class PersistentMessageStorage(FallbackStorage):
         If STORE_WHEN_ADDING is True, messages are already stored at this time and won't be
         saved again.
         """
-        if not get_user(self.request).is_authenticated():
+        if self.is_anonymous:
             return super(PersistentMessageStorage, self)._store(messages, response, *args, **kwargs)
+
         for message in messages:
             if not self.used or message.is_persistent():
                 if not message.pk:
@@ -116,21 +162,33 @@ class PersistentMessageStorage(FallbackStorage):
         return []
 
     def update(self, response):
-        if not get_user(self.request).is_authenticated():
+        """
+        Deletes all nonpersistent read messages and saves all unstored messages.
+
+        This method is called by `process_response` in messages middleware
+        """
+        if self.is_anonymous:
             return super(PersistentMessageStorage, self).update(response)
-        """
-        Deletes all non-persistent, read messages. Saves all unstored messages.
-        """
+
         if self.used:
             self._delete_non_persistent()
+
         return super(PersistentMessageStorage, self).update(response)
 
     def add(self, level, message, extra_tags='', subject='', user=None, from_user=None, expires=None, close_timeout=None):
         """
-        Queues a message to be stored.
+        Adds or queues a message to the storage
 
-        The message is only queued if it contained something and its level is
-        not less than the recording level (``self.level``).
+        :param level: Level of the message
+        :param message: Message text to be saved
+        :param extra_tags: String with separated tags to add to message Ex: "secret classified"
+        :param subject: Subject of the message 
+        :param user: `auth.User` that receives the message
+        :param from_user: `auth.User` that sends the message
+        :param expires: Timestamp that indicates when the message expires
+        :param close_timeout: Integer
+
+        .. note:: The message is only saved if it contains something and its level is over the recorded level (`MESSAGE_LEVEL`) `self.level`
         """
         to_user = user or get_user(self.request)
         if not to_user.is_authenticated():
@@ -140,12 +198,16 @@ class PersistentMessageStorage(FallbackStorage):
                 return super(PersistentMessageStorage, self).add(level, message, extra_tags)
         if not message:
             return
-        # Check that the message level is not less than the recording level.
+
+        # Save the message only if its level is over the recorded level, see `MESSAGE_LEVEL` in Django docs
         level = int(level)
         if level < self.level:
             return
-        # Add the message.
-        message = Message(user=to_user, level=level, message=message, extra_tags=extra_tags, subject=subject, from_user=from_user, expires=expires, close_timeout=close_timeout)
+
+        # Add the message
+        message = Message(user=to_user, level=level, message=message, extra_tags=extra_tags, subject=subject, 
+            from_user=from_user, expires=expires, close_timeout=close_timeout)
+
         # Messages need a primary key when being displayed so that they can be closed/marked as read by the user.
         # Hence, save it now instead of adding it to queue:
         if STORE_WHEN_ADDING:
