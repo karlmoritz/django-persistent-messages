@@ -8,6 +8,6 @@ urlpatterns = patterns('persistent_messages.views',
     url(r'^mark_read/all/$', 'message_mark_all_read', name='message_mark_all_read'),
     
     # Delete
-    url(r'^borrar/mensaje/(?P<message_id>\d+)/$', 'message_delete', name='message_delete'),
-    url(r'^borrar/todos/$', 'message_delete_all', name='message_delete_all'),
+    url(r'^delete/message/(?P<message_id>\d+)/$', 'message_delete', name='message_delete'),
+    url(r'^delete/all/$', 'message_delete_all', name='message_delete_all'),
 )
