@@ -36,7 +36,6 @@ class PersistentMessageStorage(FallbackStorage):
         """
         super(PersistentMessageStorage, self).__init__(*args, **kwargs)
         self.non_persistent_messages = []
-        self.is_anonymous = not get_user(self.request).is_authenticated()
 
     def _message_queryset(self, exclude_read=None):
         """
@@ -63,7 +62,8 @@ class PersistentMessageStorage(FallbackStorage):
 
         This is called by BaseStorage._loaded_messages
         """
-        if self.is_anonymous:
+        is_anonymous = not get_user(self.request).is_authenticated()
+        if is_anonymous:
             return super(PersistentMessageStorage, self)._get(*args, **kwargs)
 
         messages = []
@@ -126,7 +126,8 @@ class PersistentMessageStorage(FallbackStorage):
         self.non_persistent_messages = []
 
     def __iter__(self):
-        if self.is_anonymous:
+        is_anonymous = not get_user(self.request).is_authenticated()
+        if is_anonymous:
             return super(PersistentMessageStorage, self).__iter__()
 
         self.used = True
@@ -140,7 +141,8 @@ class PersistentMessageStorage(FallbackStorage):
         """
         Obsolete method since model takes care of this.
         """
-        if self.is_anonymous:
+        is_anonymous = not get_user(self.request).is_authenticated()
+        if is_anonymous:
             return super(PersistentMessageStorage, self)._prepare_messages(messages)
         pass
         
@@ -152,7 +154,8 @@ class PersistentMessageStorage(FallbackStorage):
         If STORE_WHEN_ADDING is True, messages are already stored at this time and won't be
         saved again.
         """
-        if self.is_anonymous:
+        is_anonymous = not get_user(self.request).is_authenticated()
+        if is_anonymous:
             return super(PersistentMessageStorage, self)._store(messages, response, *args, **kwargs)
 
         for message in messages:
@@ -167,7 +170,8 @@ class PersistentMessageStorage(FallbackStorage):
 
         This method is called by `process_response` in messages middleware
         """
-        if self.is_anonymous:
+        is_anonymous = not get_user(self.request).is_authenticated()
+        if is_anonymous:
             return super(PersistentMessageStorage, self).update(response)
 
         if self.used:
