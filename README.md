@@ -112,7 +112,7 @@ Persistent Messages has an extended API that will let you do some extra nice thi
 
 This is the prototype of `add_message` in Persistent Messages.
 
-    def add_message(request, level, message, extra_tags='', fail_silently=False, subject='', user=None, email=False, from_user=None, expires=None, close_timeout=None):
+    def add_message(request, level, message, extra_tags='', fail_silently=False, subject='', user=None, email=False, from_user=None, parent_msg=None, expires=None, close_timeout=None):
 
 #### Subject and email notifications ####
 

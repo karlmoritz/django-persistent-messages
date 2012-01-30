@@ -13,6 +13,7 @@ LEVEL_TAGS = utils.get_level_tags()
 class Message(models.Model):
     user = models.ForeignKey(User, blank=True, null=True)
     from_user = models.ForeignKey(User, blank=True, null=True, related_name="from_user")
+    parent_msg = models.ForeignKey('self', null=True, blank=True, related_name="child_messages")
     subject = models.CharField(max_length=255, blank=True, default='')
     message = models.TextField()
     LEVEL_CHOICES = (
@@ -32,6 +33,7 @@ class Message(models.Model):
     created = models.DateTimeField(auto_now_add=True)    
     modified = models.DateTimeField(auto_now=True)
     read = models.BooleanField(default=False)
+    replied = models.BooleanField(default=False)
     expires = models.DateTimeField(null=True, blank=True)
     close_timeout = models.IntegerField(null=True, blank=True)
 

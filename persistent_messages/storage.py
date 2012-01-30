@@ -179,7 +179,7 @@ class PersistentMessageStorage(FallbackStorage):
 
         return super(PersistentMessageStorage, self).update(response)
 
-    def add(self, level, message, extra_tags='', subject='', user=None, from_user=None, expires=None, close_timeout=None):
+    def add(self, level, message, extra_tags='', subject='', user=None, from_user=None, parent_msg=None, expires=None, close_timeout=None):
         """
         Adds or queues a message to the storage
 
@@ -189,6 +189,7 @@ class PersistentMessageStorage(FallbackStorage):
         :param subject: Subject of the message 
         :param user: `auth.User` that receives the message
         :param from_user: `auth.User` that sends the message
+        :param parent_msg: `persistent_messages.Message` that this message is in reply to
         :param expires: Timestamp that indicates when the message expires
         :param close_timeout: Integer
 
@@ -210,7 +211,13 @@ class PersistentMessageStorage(FallbackStorage):
 
         # Add the message
         message = Message(user=to_user, level=level, message=message, extra_tags=extra_tags, subject=subject, 
-            from_user=from_user, expires=expires, close_timeout=close_timeout)
+            from_user=from_user, parent_msg=parent_msg, expires=expires, close_timeout=close_timeout)
+
+        # Update the parent_msg `replied` field to true
+        if parent_msg is not None:
+            parent_msg.replied = True
+            parent_msg.save()
+
 
         # Messages need a primary key when being displayed so that they can be closed/marked as read by the user.
         # Hence, save it now instead of adding it to queue:
