@@ -2,27 +2,8 @@
 {% load i18n %} 
 {% block body %}
 <h1>{% trans "Inbox" %}</h1>
-{% if message_list %} 
-<table class="message_list">
-    <thead>
-        <tr><th>{% trans "Sender" %}</th><th>{% trans "Subject" %}</th><th>{% trans "Received" %}</th><th>{% trans "Action" %}</th></tr>
-    </thead>
-    <tbody>
-{% for message in message_list %} 
-    <tr>
-        <td>{{ message.from_user }} </td>
-        <td>
-            {% if not message.read %}<strong>{% endif %}
-            {% if message.replied %}<em>{% endif %}
-            <a href="{% url message_detail message.id %}">{{ message.subject }}</a>
-            {% if message.replied %}</em>{% endif %}
-            {% if not message.read %}</strong>{% endif %}</td>
-        <td>{{ message.created|date:_("DATETIME_FORMAT") }}</td>
-        <td><a href="{% url message_delete message.id %}">{% trans "delete" %}</a></td>
-    </tr>
-{% endfor %}
-    </tbody>
-</table>
+{% if messages %} 
+{% include "persistent_messages/message/includes/messages.jquery.html" %}
 {% else %}
 <p>{% trans "No messages." %}</p>
 {% endif %}  

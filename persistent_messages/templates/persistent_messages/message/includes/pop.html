@@ -1,0 +1,14 @@
+{% load i18n %}
+{% if messages %}
+<div class="messages_pop">
+    {% for message in messages %}
+    {% comment %}AND has precedence over OR, i.e. (not read and not hide) or not persistent {% endcomment %}
+    {% if not message.read and not hide_persistent or not message.is_persistent %}
+    {% include "persistent_messages/message/includes/pop_div.html" %}
+    {% endif %}
+    {% endfor %}
+{% if close_all and messages|length > 1 %}
+<a class="message_pop_close_all icon" href="{% url message_mark_all_read %}"><span>{% trans "close all" %}</span></a>
+{% endif %}
+</div>
+{% endif %}

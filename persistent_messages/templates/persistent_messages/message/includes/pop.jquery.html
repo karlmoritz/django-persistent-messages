@@ -2,13 +2,9 @@
 <script type="text/javascript">
 //<![CDATA[
 $(document).ready(function() {
-    var messageSelector = '.messages div';
-    var messageText = '.message_text';
-    var closeSelector = '.message_close';
-    var closeAllSelector = '.message_close_all';
-    var moreSelector = '.message_more';
-    var lessSelector = '.message_less';
-
+    var messageSelector = '.messages_pop div';
+    var closeSelector = '.message_pop_close';
+    var closeAllSelector = '.message_pop_close_all';
     $.fn.messageClose = function() {
         $(this).fadeTo('fast', 0, function() {
             $(this).hide('fast', function() {
@@ -48,38 +44,10 @@ $(document).ready(function() {
         $(this).messageClose();
         $(messageSelector).messageClose();
     });
-    $(moreSelector).click(function(event) {
-        event.preventDefault();
-        if ($(this).attr('href') != '#') {
-  
-            if ($(this).attr('class') == 'message_more') {
 
-              url = $(this).attr('href');
-              var descriptor = "#message_text_" + $(this).attr('id');
-              $.get(url, function(data) {
-                var txt = $(descriptor).html();
-                $(descriptor).data({ content: txt }); //$(descriptor).html
-                $(descriptor).html(data);
-              });
-              $(this).text("show less");
-              $(this).removeClass('message_more').addClass('message_less');
-
-            }
-
-            else if ($(this).attr('class') == 'message_less') {
-
-              var descriptor = "#message_text_" + $(this).attr('id');
-              var txt = $(descriptor).data();
-              $(descriptor).html(txt.content);
-              $(this).text("show more");
-              $(this).removeClass('message_less').addClass('message_more');
-
-            }
-        }
-    });
     {% for message in messages %}
     {% if message.close_timeout %}
-    $('#message_{{ message.pk }}').messageCloseTimeout({{ message.close_timeout }});
+    $('#message_pop_{{ message.pk }}').messageCloseTimeout({{ message.close_timeout }});
     {% endif %}
     {% endfor %}
 });
@@ -87,6 +55,6 @@ $(document).ready(function() {
 //]]>
 </script>
 {% with 1 as jquery %}
-{% include "persistent_messages/message/includes/messages.html" %}
+{% include "persistent_messages/message/includes/pop.html" %}
 {% endwith %}
 {% endif %}

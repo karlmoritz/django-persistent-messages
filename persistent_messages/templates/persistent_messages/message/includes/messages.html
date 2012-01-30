@@ -1,13 +1,13 @@
 {% load i18n %}
 {% if messages %}
-<ul class="messages">
+  <div class="messages">
     {% for message in messages %}
-    {% if not hide_persistent or not message.is_persistent %}
-    {% include "persistent_messages/message/includes/message_li.html" %}
-    {% endif %}
+      {% if message.is_persistent %}
+        {% include "persistent_messages/message/includes/message_div.html" %}
+      {% endif %}
     {% endfor %}
-</ul>
-{% if close_all and messages|length > 1 %}
-<a class="message-close-all icon" href="{% url message_mark_all_read %}"><span>{% trans "close all" %}</span></a>
-{% endif %}
+  </div>
+  {% if close_all and messages|length > 1 %}
+    <a class="message_close_all icon" href="{% url message_mark_all_read %}"><span>{% trans "close all" %}</span></a>
+  {% endif %}
 {% endif %}
