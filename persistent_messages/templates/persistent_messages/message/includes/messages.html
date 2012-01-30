@@ -1,7 +1,7 @@
 {% load i18n %}
 {% if messages %}
   <div class="messages">
-    {% for message in messages %}
+    {% for message in message_list %}
       {% if message.is_persistent %}
         {% include "persistent_messages/message/includes/message_div.html" %}
       {% endif %}

@@ -29,8 +29,6 @@ def message_detail(request, message_id):
     
 
 
-
-
 def message_delete(request, message_id):
     user = get_user(request)
     if not user.is_authenticated():
@@ -96,7 +94,6 @@ def message_inbox(request, template_name='persistent_messages/message_inbox.html
     #    raise PermissionDenied
     
     message_list = Message.objects.filter(user=user)
-    print message_list
     return render_to_response(template_name, {
         'message_list': message_list,
     }, context_instance=RequestContext(request))
